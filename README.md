@@ -9,6 +9,7 @@ under <https://lsimons.github.io/>.
 ## Using this template
 
 1. Click **Use this template** on GitHub (or clone this repo).
+
 2. Install the toolchain and rename the template to your project:
 
    ```bash
