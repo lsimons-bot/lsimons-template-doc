@@ -78,39 +78,29 @@ must include the base path.
   not part of `ci` because it is a network call that flakes.
 - Re-render and commit a deck's HTML/PDF whenever you change its `.qmd`.
   CI does not run Quarto.
-- Do not silence a check without a written justification on the same line.
-  A bare rule disable in `.markdownlint-cli2.jsonc` is not acceptable; one
-  with a comment saying which files it is for, and why, is.
-- Never weaken a control to make a check pass: do not unpin an action,
-  drop a hook from `prek.toml`, or add a URL to `.lychee.toml`'s `exclude`
-  list because it is genuinely broken.
+- No unexplained rule disables in `.markdownlint-cli2.jsonc` — say which
+  files and why, on the same line.
+- Never weaken a control to make a check pass: no unpinned actions, no
+  dropped `prek.toml` hooks, no `.lychee.toml` exclusions for URLs that
+  are genuinely broken.
 
 **Supply chain:**
 
-- `docs/bun.lock` is committed and must stay in the tree. `mise run ci` and
-  CI install with `--frozen-lockfile`, so a `docs/package.json` change the
-  lockfile does not reflect fails the gate instead of being silently
-  resolved on the runner. Run `mise run docs-install` and commit the result.
-- GitHub Actions are pinned to full-length commit SHAs with a `# vX.Y.Z`
-  comment, and `zizmor` enforces that in CI.
-- Every tool in `.mise.toml` is pinned to an exact version, as are the
-  `additional_dependencies` of the `prek.toml` hooks. None of that is
-  covered by dependabot, so refresh it deliberately with `mise up` and read
-  the diff.
-- Dependencies in `docs/package.json` are *not* hard-pinned: `docs/bun.lock`
-  pins them exactly, and hard-pinning would fight dependabot, whose job is
-  to move the constraint.
-- `bun audit` (run it in `docs/`) must report no vulnerabilities. It is not
-  in `mise run ci` because it queries the registry's advisory API and so
-  flakes for the same reason `lychee` does.
-- The `overrides` block in `docs/package.json` raises the floor on
-  *transitive* packages that a published advisory names. Every entry is a
-  patch-level bump inside the range its parents already ask for, so it
-  changes no API. Neither `bun update` nor dependabot lifts a nested
-  transitive on its own — an override is the only lever. Drop an entry once
-  the parent's own release moves past it; `bun audit` stays green either
-  way, and a stale override silently freezes a package below what its
-  parent would otherwise get.
+- `docs/bun.lock` is committed and must stay in the tree. `mise run ci`
+  and CI install with `docs-install-frozen`; use `mise run docs-install`
+  when deliberately changing dependencies, and commit the result.
+- Dependencies in `docs/package.json` stay as ranges — `bun.lock` is the
+  pin, and dependabot moves the constraint.
+- `mise run docs-audit` (`bun audit`) must be clean. It is not in
+  `mise run ci` because it is a network call, like `links`.
+- Fix an advisory in a *transitive* package with the `overrides` block in
+  `docs/package.json` — neither `bun update` nor dependabot will lift a
+  nested resolution. Keep each entry inside the range its parents already
+  ask for, and drop it once their own releases move past it.
+- Pin GitHub Actions to full-length commit SHAs; `zizmor` enforces it.
+- Every `.mise.toml` tool and every `prek.toml`
+  `additional_dependencies` entry is exact-pinned and invisible to
+  dependabot; refresh with `mise up` and read the diff.
 
 ## Commit Message Convention
 
@@ -122,38 +112,11 @@ Follow [Conventional Commits](https://conventionalcommits.org/):
 
 ## Session Completion
 
-Work is NOT complete until every change is committed, pushed, and CI passes.
+Work is not complete until every change is committed, pushed, and CI passes.
 
-1. **Quality gates** (if anything changed):
+1. `mise run ci` (or the tasks that changed)
+2. Commit everything — do not leave the working tree dirty
+3. `git pull --rebase && git push`
+4. `mise run ci-watch`; on failure `gh run view --log-failed`, fix, repeat
 
-   ```bash
-   mise run ci
-   ```
-
-   If a slide deck changed, also `mise run docs-slides` and commit the rendered
-   HTML/PDF. If a workflow changed, also `mise run audit`.
-
-2. **Commit**: stage and commit every change from this session. Do not leave the working tree dirty.
-
-   ```bash
-   git status              # review untracked and unstaged files
-   git add <files>
-   git commit -m "<type>(<scope>): <description>"
-   ```
-
-3. **Push**:
-
-   ```bash
-   git pull --rebase && git push
-   git status  # must show "up to date with origin"
-   ```
-
-4. **Verify CI**:
-
-   ```bash
-   mise run ci-watch
-   ```
-
-   On failure, inspect with `gh run view --log-failed`, fix, commit, push, and re-watch.
-
-Never stop before CI is green. If anything fails, resolve and retry.
+Never stop before CI is green.
