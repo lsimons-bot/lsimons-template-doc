@@ -83,6 +83,14 @@ description = "Regenerate the favicon + apple-touch-icon from the palette"
 dir = "docs"
 run = "bun run scripts/gen-favicon.mjs"
 
+# Not part of `ci`: this hits the registry's advisory API, so it flakes on
+# network the same way `links` does. Anything it reports gets pinned up
+# through the `overrides` block in docs/package.json — see AGENTS.md.
+[tasks.docs-audit]
+description = "bun audit of the site dependency tree (network; not part of `ci`)"
+dir = "docs"
+run = "bun audit"
+
 [tasks.docs-clean]
 description = "Remove build artifacts"
 run = "rm -rf docs/dist docs/.astro"

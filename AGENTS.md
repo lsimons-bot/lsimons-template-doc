@@ -25,6 +25,7 @@ and `mise install` once per clone.
 | `mise run ci`                  | Full gate: install + lint + check + build                   |
 | `mise run links`               | `lychee` broken-link check (network; not part of `ci`)      |
 | `mise run audit`               | `zizmor` audit of workflows + dependabot config             |
+| `mise run docs-audit`          | `bun audit` of the site dependency tree (network)           |
 | `mise run docs-slides`         | Render the example `.qmd` deck to HTML + PDF                |
 | `mise run docs-favicon`        | Regenerate the favicon + apple-touch-icon                   |
 | `mise run docs-clean`          | Remove build artifacts                                      |
@@ -99,6 +100,17 @@ must include the base path.
 - Dependencies in `docs/package.json` are *not* hard-pinned: `docs/bun.lock`
   pins them exactly, and hard-pinning would fight dependabot, whose job is
   to move the constraint.
+- `bun audit` (run it in `docs/`) must report no vulnerabilities. It is not
+  in `mise run ci` because it queries the registry's advisory API and so
+  flakes for the same reason `lychee` does.
+- The `overrides` block in `docs/package.json` raises the floor on
+  *transitive* packages that a published advisory names. Every entry is a
+  patch-level bump inside the range its parents already ask for, so it
+  changes no API. Neither `bun update` nor dependabot lifts a nested
+  transitive on its own — an override is the only lever. Drop an entry once
+  the parent's own release moves past it; `bun audit` stays green either
+  way, and a stale override silently freezes a package below what its
+  parent would otherwise get.
 
 ## Commit Message Convention
 
